@@ -1,0 +1,375 @@
+#!/system/bin/sh
+# KTSR by Pedro (pedrozzz0 @ GitHub)
+# If you wanna use it as part of your project, please maintain the credits to it respective's author(s).
+
+MODPATH=/data/adb/modules/KTSR
+
+kts_mode=$(getprop persist.kingtweaks.mode)
+ 	
+if [[ "$kts_mode" == "1" ]]
+then
+kts_profile=Automatic
+
+elif [[ "$kts_mode" == "2" ]]
+then
+kts_profile=Battery
+        	
+elif [[ "$kts_mode" == "3" ]]
+then
+kts_profile=Balanced
+        	
+elif [[ "$kts_mode" == "4" ]]
+then
+kts_profile=Extreme
+
+elif [[ "$kts_mode" == "5" ]]
+then
+kts_profile=Gaming
+
+elif [[ "$kts_mode" == "6" ]]
+then
+kts_profile=Latency
+fi
+
+if [[ "$(settings get global low_power)" == "1" ]]; then
+low_power=Activated
+
+else
+low_power=Deactivated
+fi
+
+if [[ "$(cmd netpolicy get restrict-background | awk '{print $4}')" == "disabled" ]]; then
+data_saver=Disabled
+
+else
+data_saver=Enabled
+fi
+
+if [[ "$(settings get secure location_providers_allowed)" == "" ]]; then
+loc_mode_pwr_saving=Enabled
+
+else
+loc_mode_pwr_saving=Disabled
+fi
+
+if [[ "$(getprop init.svc.thermal-engine)" == "running" ]] || [[ "$(getprop init.svc.mi_thermald)" == "running" ]] || [[ "$(getprop init.svc.thermald)" == "running" ]] || [[ "$(getprop init.svc.thermalservice)" == "running" ]]; then
+thermal=On
+
+elif [[ "$(getprop init.svc.thermal-engine)" == "stopped" ]] || [[ "$(getprop init.svc.mi_thermald)" == "stopped" ]] || [[ "$(getprop init.svc.thermald)" == "stopped" ]] || [[ "$(getprop init.svc.thermalservice)" == "stopped" ]]; then
+thermal=Off
+fi
+
+if [[ -z "$thermal" ]]; then
+thermal=Unknown
+fi
+
+menu() {
+clear
+echo ""
+echo "******************************************"
+echo "* KTSR (Alt.) Profile Controller & Misc. *"
+echo "******************************************"
+echo ""
+echo "[*] Profile active: $kts_profile"
+echo ""
+sleep 1.5
+echo "[*] Thermal state: $thermal"
+echo ""
+sleep 1.3
+echo "[*] Available profiles: "
+echo ""
+sleep 1.2
+echo "[1] Automatic: Change your profile automatically based on specific circumstances and do additional tweaking for a better user-experience."
+echo ""
+sleep 2
+echo "[2] Battery: Reduce power draw to less battery drain and energetic comsumption, ensuring a juicy battery life."
+echo ""
+sleep 1.5
+echo "[3] Balanced: Balanced between battery life and performance, perfect to be used as daily driver."
+echo ""
+sleep 2
+echo "[4] Extreme: Tweaks both CPU / GPU and more for less throttling, maintaining a consistent performance. May drain more battery also. Recommended to benchmarking / heavy apps."
+echo ""
+sleep 2.5
+echo "[5] Gaming: Recommended to gamers who want the best performance possible while playing, with almost zero throttling, tweaks both CPU / GPU and more to achieve it, will probably drain a lot of battery life."
+echo ""
+sleep 3.5
+echo "[6] Latency: Recommended to users who want really silky / smooth UI"
+echo ""
+sleep 2.0
+echo "[*] Other misc options: "
+echo ""
+sleep 1.8
+echo "[7] Optimize apps package"
+echo ""
+sleep 1.6
+echo "[8] Optimize databases"
+echo ""
+sleep 1.4
+if [[ "$low_power" == "Deactivated" ]]; then
+echo "[9] Enable low power mode"
+echo ""
+sleep 1.6
+else
+echo "[10] Disable low power mode"
+echo ""
+sleep 1.4
+fi
+if [[ "$data_saver" == "Disabled" ]]; then
+echo "[11] Enable data saver"
+echo ""
+sleep 1.4
+else
+echo "[12] Disable data saver"
+echo ""
+sleep 1.6
+fi
+if [[ "$loc_mode_pwr_saving" == "Enabled" ]]; then
+echo "[13] Enable power-saving location mode"
+echo ""
+sleep 1.7
+else
+echo "[14] Disable power-saving location mode"
+echo ""
+sleep 1.9
+fi
+echo "[15] Clean trash files, E.G: System logs, debug logs, etc."
+echo ""
+sleep 2.3
+echo "[16] Access our telegram group"
+echo ""
+sleep 1.6
+echo "[17] FKM updater script"
+echo ""
+sleep 1.4
+echo "[18] Kill background apps"
+echo ""
+sleep 1.3
+echo "[19] Update scripts"
+echo ""
+sleep 1.1
+if [[ "$thermal" == "On" ]]; then
+echo "[20] Disable thermal"
+echo ""
+sleep 1
+elif [[ "$thermal" == "Off" ]]; then
+echo "[21] Enable thermal"
+echo "" 
+sleep 1
+fi
+echo "[0] Exit"
+echo ""
+sleep 0.9
+echo -n "[*] Select the desired option: "
+read -r option
+		case $option in
+			"1")
+				echo "Applying profile..."
+				setprop persist.kingtweaks.mode 1
+				;;
+				
+						"2")
+						echo "Applying profile..."
+						setprop persist.kingtweaks.mode 2
+						;;
+						
+						"3")
+						echo "Applying profile..."
+						setprop persist.kingtweaks.mode 3
+						;;
+						
+						"4")
+						echo "Applying profile..."
+						setprop persist.kingtweaks.mode 4
+						;;
+						
+						"5")
+						echo "Applying profile..."
+						setprop persist.kingtweaks.mode 5
+						;;
+						
+						"6")
+						echo "Applying profile..."
+						setprop persist.kingtweaks.mode 6
+						;;
+						
+						"7")
+						echo "Optimizing..."
+						cmd package bg-dexopt-job; echo "Done!"
+						;;
+						
+						"8")
+						if [[ $(find /system -name "sqlite3" -type f) ]]; then
+						echo "[*] Optimizing..."
+						for i in $(find /d* -iname "*.db"); do
+                        sqlite3 "$i" 'VACUUM;'
+                        resVac=$?
+                        if [[ $resVac == 0 ]]; then
+                        resVac="SUCCESS"
+                        else
+                        resVac="FAILED(ERRCODE)-$resVac"
+                        fi
+                        sqlite3 "$i" 'REINDEX;'
+                        resIndex=$?
+                        if [[ $resIndex == 0 ]]; then
+                        resIndex="SUCCESS"
+                        else
+                        resIndex="FAILED(ERRCODE)-$resIndex"
+                        fi
+                        sqlite3 "$i" 'ANALYZE;'
+                        resAnlz=$?
+                        if [ $resAnlz == 0 ]; then
+                        resAnlz="SUCCESS"
+                        else
+                        resAnlz="FAILED(ERRCODE)-$resAnlz"
+                        fi
+                        echo -e "Database $i: VACUUM=$resVac REINDEX=$resIndex ANALYZE=$resAnlz" >> /sdcard/KTSR/dbopt.log
+                        done
+						else
+						echo "[!] SQLite not found, aborting..."
+                        fi
+                        ;;
+						
+                        "9")
+                        settings put global low_power 1
+                        echo "Done!"
+                        ;;
+                        
+                        "10")
+                        settings put global low_power 0
+                        echo "Done!"
+                        ;;
+                        
+                        "11")
+                        cmd netpolicy set restrict-background true
+                        echo "Done!"
+                        ;;
+                        
+                        "12")
+                        cmd netpolicy set restrict-background false
+                        echo "Done!"
+                        ;;
+                        
+                        "13")
+                        echo "Applying settings..."
+                        settings put secure location_mode "0"
+                        settings put secure location_providers_allowed ""
+                        echo "0" > "/sys/module/service_locator/parameters/enable"
+                        echo "Done!"
+                        ;;
+                        
+                        "14")
+                        settings put secure location_providers_allowed "gps,network"
+                        echo "1" > "/sys/module/service_locator/parameters/enable"
+                        echo "Done!"
+                        ;;
+                        
+                        "15")
+                        echo "Cleaning debug logs & system trash..."
+                        cleantrash
+                        echo "Done!"
+                        ;;
+                        
+						"16")
+						am start -a android.intent.action.VIEW -d https://t.me/kingprojectzdiscussion
+						;;
+						
+						"17")
+						echo "Copy this link to FKM -> Flasher -> Import a kernel download configuration to always getting alerted when a new KTSR update is released!"
+						echo "https://raw.githubusercontent.com/pedrozzz0/King-Tweaks/master/update.json"
+						;;
+						
+						"18")
+						echo "Killing all background apps..."
+						am kill-all
+						sleep 1.8
+						echo "Done!"
+						;;
+						
+						"19")
+						echo "Updating scripts..."
+						wget -O "$MODPATH"/system/bin/kingtweaks "https://raw.githubusercontent.com/pedrozzz0/King-Tweaks/master/kingtweaks"
+						wget -O "$MODPATH"/system/bin/kingauto "https://raw.githubusercontent.com/pedrozzz0/King-Tweaks/master/kingauto"
+						wget -O "$MODPATH"/libs/libktsr.sh "https://raw.githubusercontent.com/pedrozzz0/King-Tweaks/master/libktsr.sh"
+						wget -O "$MODPATH"/system/bin/ktsrmenu "https://raw.githubusercontent.com/pedrozzz0/King-Tweaks/master/ktsrmenu"
+						wget -O "$MODPATH"/system/bin/cleantrash "https://raw.githubusercontent.com/pedrozzz0/King-Tweaks/master/cleantrash"
+						echo "Done! Reboot to the effects be applied."
+						;;
+                        
+						"20")
+						echo "Disabling thermal..."
+						stop thermald
+						stop thermalservice
+						stop mi_thermald
+						stop thermal-engine
+						echo "Done!"
+						;;
+
+						"21")
+						echo "Enabling thermal..."
+						start thermald
+						start thermalservice
+						start mi_thermald
+						start thermal-engine
+						echo "Done!"
+						;;
+						
+						"0")
+						echo "Hope that see ya soon! ;)"
+						;;
+						
+						*)
+						echo "[!] Unexpected response, aborting..."
+						;;
+						esac
+						}
+						
+						if [[ -z "$1" ]]; then
+						menu
+						fi
+
+						usage() {
+							echo "Usage: ktsrmenu [-p <value corresponding to the profile (0-6)>] [-h <trigger this dialog>] [ -t <Disable thermal if enabled and vice-versa>"
+							echo "[1] Automatic"
+                            echo "[2] Battery"
+                            echo "[3] Balanced"
+                            echo "[4] Extreme"
+                            echo "[5] Gaming"
+                            echo "[6] Latency"
+							exit 1
+							}
+						
+						while getopts ":p:th:" opt; do
+						[[ $# -gt 2 ]] && usage
+						case "${opt}" in
+						
+						p) echo "Applying profile..."
+						setprop persist.kingtweaks.mode "$2"
+						;;
+						
+						t) if [[ $thermal == "On" ]]; then 
+						echo "Disabling thermal..."
+						stop thermald
+						stop thermalservice
+						stop mi_thermald
+						stop thermal-engine
+						echo "Done!"
+						elif [[ $thermal == "Off" ]]; then
+						echo "Enabling thermal..."
+						start thermald
+						start thermalservice
+						start mi_thermald
+						start thermal-engine
+						echo "Done!"
+						else
+                        echo "[!] No valid thermal controllers found / Unknown thermal state. Aborting..."
+                        exit 1
+						fi
+						;;
+						
+						h | *) usage
+						;;
+						esac
+                        done
+
+                        shift $((OPTIND - 1))
