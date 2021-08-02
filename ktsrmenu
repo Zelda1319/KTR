@@ -1,0 +1,507 @@
+#!/system/bin/sh
+# KTSR by Pedro (pedrozzz0 @ GitHub)
+# Credits: veez21
+# If you wanna use it as part of your project, please maintain the credits to it respective's author(s).
+
+# Magisk Module ID **
+ID="KTSR"
+
+# Detect root
+_name=$(basename $0)
+ls /data >/dev/null 2>&1 || { echo "[!] $ID needs to run as root"; echo "type 'su' then '$_name'"; exit 1; }
+
+# Import magisk util_functions.sh
+[[ -f /data/adb/magisk/util_functions.sh ]] && . /data/adb/magisk/util_functions.sh || { echo "[!] util_functions.sh not detected"; exit 1; }
+
+# Magisk Mod Directory
+[[ -d "/sbin/.magisk" ]] && MOUNTPATH="/sbin/.magisk/modules" || MOUNTPATH="$(find /dev -mindepth 2 -maxdepth 2 -type d -name ".magisk")/modules"
+MODDIR="$MOUNTPATH/$ID"
+[[ ! -d "$MODDIR" ]] && { echo "[!] Module not detected"; exit 1; }
+
+# Set path to your busybox if applicable
+_bb=
+
+# Load mod-util.sh
+. "$MODDIR"/mod-util.sh || exit $?
+
+# Set Log Files
+mount -o remount,rw /cache 2>/dev/null
+mount -o rw,remount /cache 2>/dev/null
+
+# Logs should go in this file
+LOG=/data/local/tmp/"$ID".log
+oldLOG=/data/local/tmp/"$ID"-old.log
+
+# Verbose output goes here
+VERLOG=/data/local/tmp/"$ID"-verbose.log
+oldVERLOG=/data/local/tmp/"$ID"-verbose-old.log
+stdoutLOG="$MODDIR"/logs/"$ID"-STDOUT.log
+oldstdoutLOG="$MODDIR"/logs/"$ID"-STDOUT-old.log
+
+# Start logging verbosely
+mv -f "$VERLOG" "$oldVERLOG" 2>/dev/null; mv -f "$LOG" "$oldLOG" 2>/dev/null; mv -f "$stdoutLOG" "$oldstdoutLOG" 2>/dev/null
+
+# exec 3>&1
+
+# exec 1>$stdoutLOG
+
+set -x 2>"$VERLOG"
+
+kts_mode=$(getprop persist.kingtweaks.mode)
+ 	
+case "$kts_mode" in
+
+1)
+  kts_profile=Automatic
+  ;;
+
+  2)
+    kts_profile=Battery
+    ;;
+
+     3)
+      kts_profile=Balanced
+      ;;
+
+       4)
+        kts_profile=Extreme
+        ;;
+
+        5)
+         kts_profile=Gaming
+         ;;
+
+          6)
+           kts_profile=Latency
+           ;;
+      esac
+
+if [[ "$(settings get global low_power)" == "1" ]]; then
+    low_power_mode=Enabled
+else
+    low_power_mode=Disabled
+fi
+
+if [[ "$(cmd netpolicy get restrict-background | awk '{print $4}')" == "enabled" ]]; then
+    data_saver=Enabled
+else
+    data_saver=Disabled
+fi
+
+if [[ "$(settings get secure location_providers_allowed)" == "" ]]; then
+    loc_mode_pwr_saving=Enabled
+else
+    loc_mode_pwr_saving=Disabled
+fi
+
+if [[ "$(getprop init.svc.thermal-engine)" == "running" ]] || [[ "$(getprop init.svc.mi_thermald)" == "running" ]] || [[ "$(getprop init.svc.thermald)" == "running" ]] || [[ "$(getprop init.svc.thermalservice)" == "running" ]]; then
+    ts=On
+    
+elif [[ "$(getprop init.svc.thermal-engine)" == "stopped" ]] || [[ "$(getprop init.svc.mi_thermald)" == "stopped" ]] || [[ "$(getprop init.svc.thermald)" == "stopped" ]] || [[ "$(getprop init.svc.thermalservice)" == "stopped" ]]; then
+      ts=Off
+else
+    ts=Unknown
+fi
+
+menu() {
+clear
+echo ""
+echo "******************************************"
+echo "* KTSR (Alt.) Profile Controller & Misc. *"
+echo "******************************************"
+echo ""
+echo "Version: v1.5-beta-r3"
+echo ""
+echo "[*] Current Profile: ${G}$kts_profile${N}"
+echo ""
+echo "[*] Thermal: ${B}$ts${N}"
+echo ""
+echo "[*] Available profiles: "
+echo ""
+echo "${C}[1] Automatic: Change your profile automatically based on specific circumstances and do additional tweaking for a better user-experience.${N}"
+echo ""
+echo "${B}[2] Battery: Reduce power draw to less battery drain and energetic comsumption, ensuring a juicy battery life.${N}"
+echo ""
+echo "${G}[3] Balanced: Balanced between battery life and performance, perfect to be used as daily driver.${N}"
+echo ""
+echo "${Y}[4] Extreme: Tweaks both CPU / GPU and more for less throttling, maintaining a consistent performance. May drain more battery also. Recommended to benchmarking / heavy apps.${N}"
+echo ""
+echo "${R}[5] Gaming: Recommended to gamers who want the best performance possible while playing, with almost zero throttling, tweaks both CPU / GPU and many other settings, will probably drain a lot of battery life.${N}"
+echo ""
+echo "[6] Latency: Recommended to users who want really silky / smooth UI"
+echo ""
+echo "[*] Other misc options: "
+echo ""
+echo "[7] Optimize apps package"
+echo ""
+if [[ "$low_power_mode" == "Disabled" ]]; then
+    echo "[8] Enable low power mode"
+    echo ""
+else
+    echo "[9] Disable low power mode"
+    echo ""
+fi
+if [[ "$data_saver" == "Disabled" ]]; then
+    echo "[10] Enable data saver"
+    echo ""
+else
+    echo "[11] Disable data saver"
+    echo ""
+fi
+if [[ "$loc_mode_pwr_saving" == "Disabled" ]]; then
+    echo "[12] Enable power-saving location mode"
+    echo ""
+else
+    echo "[13] Disable power-saving location mode"
+    echo ""
+fi
+echo "[14] Clean trash files, E.G: System logs, debug logs, etc."
+echo ""
+echo "[15] Access our telegram group"
+echo ""
+if [[ "$ts" == "On" ]]; then
+    echo "${B}[16] Disable thermal${N}"
+    echo ""
+elif [[ "$ts" == "Off" ]]; then
+      echo "${B}[17] Enable thermal${N}"
+      echo ""
+fi
+if [[ -e "/sys/module/mdss_mdp/parameters/custom_hz" ]]; then
+    echo "[18] 50 HZ Refresh Rate"   
+    echo ""
+elif [[ -e "/sys/module/mdss_mdp/parameters/custom_hz" ]] && [[ "$(grep -Eo '[0-9]' /sys/module/mdss_mdp/parameters/custom_hz)" ]]; then
+      echo "[18] 50 HZ Refresh Rate"   
+      echo ""
+      echo "[19] 55 HZ Refresh Rate"
+      echo ""
+fi
+if [[ "$(settings get system peak_refresh_rate)" -ne "60" ]]; then
+echo "[20] 60 HZ Refresh Rate"
+echo ""
+fi
+if [[ "$(settings get system peak_refresh_rate)" -ne "90" ]]; then
+echo "[21] 90 HZ Refresh Rate"
+echo ""
+fi
+if [[ "$(settings get system peak_refresh_rate)" -ne "120" ]]; then
+echo "[22] 120 HZ Refresh Rate"
+echo ""
+fi
+echo "[23] Reset Refresh Rate config"
+echo ""
+echo "[24] Free RAM [ Balanced ] (Will only drop caches)."
+echo ""
+echo "[25] Free RAM [ Agressive ] (Will kill all background apps and drop caches)."
+echo ""
+echo "[26] Free RAM [ Extreme ] (Will kill all apps, and drop caches)."
+echo ""
+echo "${R}[0] Exit${N}"
+echo ""
+echo -n "${Y}[*] Select the desired option:${N} "
+read -r option
+		case $option in
+			"1")
+				echo "${B}Applying profile...${N}"
+				setprop persist.kingtweaks.mode "1" 2>/dev/null
+                echo "${G}Done!${N}"
+				sleep 2 
+                menu
+                ;;
+				
+						"2")
+						echo "${B}Applying profile...${N}"
+						setprop persist.kingtweaks.mode "2" 2>/dev/null
+						echo "${G}Done!"
+                        sleep 2 
+                        menu
+                        ;;
+						
+						 "3")
+						    echo "${B}Applying profile...${N}"
+						    setprop persist.kingtweaks.mode "3" 2>/dev/null
+                            echo "${G}Done!${N}"
+						    ;;
+						
+						     "4")
+						        echo "${B}Applying profile...${N}"
+						        setprop persist.kingtweaks.mode "4" 2>/dev/null
+						        echo "${G}Done!${N}"
+                                sleep 2 
+                                menu
+                                ;;
+						
+						         "5")
+						            echo "${B}Applying profile...${N}"
+						            setprop persist.kingtweaks.mode "5" 2>/dev/null
+						            echo "${G}Done!${N}"
+                                    sleep 2 
+                                    menu
+                                    ;;
+						
+						           "6")
+						              echo "${B}Applying profile...${N}"
+						              setprop persist.kingtweaks.mode "6" 2>/dev/null
+						              echo "${G}Done!${N}"
+                                      sleep 2 
+                                      menu
+                                      ;;
+						
+						              "7")
+						                 echo "${B}Optimizing packages...${N}"
+						                 cmd package bg-dexopt-job
+						                 sleep 5
+                                         menu
+                                         ;;
+						
+                                          "8")
+                                             settings put global low_power 1
+                                             settings put global low_power_sticky 1
+                                             settings put global app_standby_enabled 1
+                                             settings put global forced_app_standby_enabled 1
+                                             settings put global app_auto_restriction_enabled true
+                                             settings put global forced_app_standby_for_small_battery_enabled 1
+                                             echo "${G}Done!${N}"
+                                             sleep 2 
+                                             menu
+                                             ;;
+                        
+                                              "9")
+                                                 settings put global low_power 0
+                                                 settings reset global low_power
+                                                 settings put global low_power_sticky 0
+                                                 settings reset global low_power_sticky
+                                                 settings put global app_standby_enabled 1
+                                                 settings reset global app_standby_enabled
+                                                 settings put global forced_app_standby_enabled 0
+                                                 settings reset global forced_app_standby_enabled
+                                                 settings put global app_auto_restriction_enabled false
+                                                 settings reset global app_auto_restriction_enabled
+                                                 settings put global forced_app_standby_for_small_battery_enabled 0
+                                                 settings reset global forced_app_standby_for_small_battery_enabled 1
+                                                 echo "${G}Done!${N}"
+                                                 sleep 2 
+                                                 menu
+                                                 ;;
+                        
+                                                 "10")
+                                                     cmd netpolicy set restrict-background true
+                                                     echo "${G}Done!${N}"
+                                                     sleep 2 
+                                                     menu
+                                                     ;;
+                        
+                                                      "11")
+                                                          cmd netpolicy set restrict-background false
+                                                          echo "${G}Done!${N}"
+                                                          sleep 2 
+                                                          menu
+                                                          ;;
+                        
+                                                           "12")
+                                                               echo "${B}Applying settings...${N}"
+                                                               settings put secure location_mode "0"
+                                                               settings put global assisted_gps_enabled "0"
+                                                               echo "${G}Done!${N}"
+                                                               sleep 2 
+                                                               menu
+                                                               ;;
+                        
+                                                                "13")
+                                                                     settings put global assisted_gps_enabled "1"
+                                                                     echo "${G}Done!${N}"
+                                                                     sleep 2 
+                                                                     menu
+                                                                    ;;
+                        
+                                                                     "14")
+                                                                          echo "${B}Cleaning debug logs and system trash...${N}"
+                                                                          cleantrash 2>/dev/null
+                                                                          echo "${G}Done!${N}"
+                                                                          sleep 2 
+                                                                         menu
+                                                                         ;;
+                        
+                                                                          "15")
+                                                                              am start -a android.intent.action.VIEW -d https://t.me/kingprojectzdiscussion
+                                                                              menu
+                                                                            ;;
+                                                                            
+						                                    "16")
+						                                    echo "${B}Disabling thermal...${N}"
+						                                    stop thermald 2>/dev/null
+						                                    stop thermalservice 2>/dev/null
+						                                    stop mi_thermald 2>/dev/null
+						                                    stop thermal-engine 2>/dev/null
+						                                    echo "${G}Done!${N}"
+						                                    sleep 2 
+						                                    menu
+						                                    ;;
+
+						                              "17")
+						                              echo "${B}Enabling thermal...${N}"
+						                              start thermald 2>/dev/null
+						                              start thermalservice 2>/dev/null
+						                              start mi_thermald 2>/dev/null
+						                              start thermal-engine 2>/dev/null
+						                              echo "${G}Done!${N}"
+						                              sleep 2 
+						                              menu
+						                              ;;
+						                            
+                                                 "18") 
+                                                      if [[ -e "/sys/module/mdss_mdp/parameters/custom_hz" ]] && [[ "$(grep -Eo '[0-9]' /sys/module/mdss_mdp/parameters/custom_hz)" ]]; then
+                                                          echo "50" > "/sys/module/mdss_mdp/parameters/custom_hz"
+                                                      else
+                                                          echo "Y" > "/sys/module/mdss_mdp/parameters/custom_hz"
+                                                      fi
+                                                      echo "${G}Done!${N}"
+                                                      sleep 2
+                                                      menu
+                                                      ;;
+                                                      
+                                                 "19")
+                                                      if [[ -e "/sys/module/mdss_mdp/parameters/custom_hz" ]] && [[ "$(grep -Eo '[0-9]' /sys/module/mdss_mdp/parameters/custom_hz)" ]]; then
+                                                          echo "55" > "/sys/module/mdss_mdp/parameters/custom_hz"
+                                                      fi
+                                                      echo "${G}Done!${N}"
+                                                      sleep 2
+                                                      menu
+                                                      ;;
+                                                      
+                                                 "20")
+                                                      if [[ -e "/sys/module/mdss_mdp/parameters/custom_hz" ]] && [[ "$(grep -o -e '[0-9\.]+' /sys/module/mdss_mdp/parameters/custom_hz)" ]]; then
+                                                          echo "60" > "/sys/module/mdss_mdp/parameters/custom_hz"
+                                                      else
+                                                          echo "N" > "/sys/module/mdss_mdp/parameters/custom_hz"
+                                                      fi
+                                                      settings put system min_refresh_rate 60
+                                                      settings put system peak_refresh_rate 60
+                                                      settings put system user_refresh_rate 60
+                                                      settings put global oneplus_screen_refresh_rate 1
+                                                      echo "${G}Done!${N}"
+                                                      sleep 2
+                                                      menu
+                                                      ;;
+       
+                                                "21")
+                                                     settings put system min_refresh_rate 90
+                                                     settings put system peak_refresh_rate 90
+                                                     settings put system user_refresh_rate 90
+                                                     settings put global oneplus_screen_refresh_rate 0
+                                                     echo "${G}Done!${N}"
+                                                     sleep 2
+                                                     menu
+                                                     ;;
+
+                                            "22")
+                                                 settings put system min_refresh_rate 120
+                                                 settings put system peak_refresh_rate 120
+                                                 settings put system user_refresh_rate 120
+                                                 settings put global oneplus_screen_refresh_rate 0
+                                                 echo "${G}Done!${N}"
+                                                 sleep 2
+                                                 menu
+                                                 ;;
+						                      
+                                          "23")
+                                               settings reset system min_refresh_rate
+                                               settings reset system peak_refresh_rate
+                                               settings reset system user_refresh_rate
+                                               settings reset global oneplus_screen_refresh_rate
+                                               echo "${G}Done!${N}"
+                                               sleep 2
+                                               menu
+                                               ;;
+                                               
+                                        "24")
+                                             sync
+                                             echo "3" > /proc/sys/vm/drop_caches
+                                             echo "${G}Done!${N}"
+                                             sleep 2
+                                             menu
+                                             ;;
+                                             
+                                      "25")
+                                           sync
+                                           echo "3" > /proc/sys/vm/drop_caches
+                                           am kill-all
+                                           echo "${G}Done!${N}"
+                                           sleep 3
+                                           menu
+                                           ;;
+                                           
+                                       "26")
+                                            sync
+                                            echo "3" > /proc/sys/vm/drop_caches
+                                            am kill-all
+                                            sleep 3
+                                            while IFS= read -r line; do
+                                            if [[ ! "$line" == "com.termux" ]] && [[ ! "$line" == "jackpal.androidterm" ]] && [[ ! "$line" == "yarolegovich.materialterminal" ]] && [[ ! "$line" == "com.google.android.inputmethod.latin" ]]; then
+                                            am force-stop "$line"
+                                            fi
+                                            done <<< $(pm list packages -e -3 | grep package | cut -f 2 -d ":")
+                                            echo "${G}Done!${N}"
+                                            sleep 2
+                                            ;;
+                                           
+                                       "0")
+						                   echo "${G}Hope that see ya soon! ;)${N}"
+						                   ;;
+						
+						           *)
+						             abort "${R}[!] Unexpected response, aborting...${N}"
+						             ;;
+						        esac
+}
+
+						if [[ -z "$1" ]]; then
+						    menu
+						fi
+
+						help_me() {
+                        echo "$MODTITLE $VER($REL)"
+                        echo "by $AUTHOR"
+                        echo "Usage: $_name"
+                        echo "or: $_name [options]..."
+                        echo "Supported options:"
+                        echo "-p [profile] [value from 1 to 6] [change between profiles without the terminal GUI]"
+                        echo "-t [thermal] [enable / disable thermal services according to your actual state without the terminal GUI]"
+                        echo "-h [help] [show this message]"
+                        exit
+                        }
+						
+						while getopts ":p:th:" opt; do
+						case "${opt}" in
+						
+						p) 
+						 echo "${B}Applying profile...${N}"
+						 setprop persist.kingtweaks.mode "$2" 2>/dev/null
+						 echo "${G}Done!${N}"
+                         ;;
+						
+						   t)
+						     if [[ $thermal == "On" ]]; then 
+						         echo "Disabling thermal..."
+						         stop thermald 2>/dev/null
+						         stop thermalservice 2>/dev/null
+						         stop mi_thermald 2>/dev/null
+						         stop thermal-engine 2>/dev/null
+						         echo "${G}Done!${N}"
+						     elif [[ $thermal == "Off" ]]; then
+						           echo "${B}Enabling thermal...${N}"
+						           start thermald 2>/dev/null
+						           start thermalservice 2>/dev/null
+						           start mi_thermald 2>/dev/null
+						           start thermal-engine 2>/dev/null
+						           echo "${G}Done!${N}"
+						     else
+                                 abort "${R}[!] No valid thermal controllers found / Unknown thermal state, aborting...${N}"
+						     fi
+						     ;;
+						
+					      h | *) help_me
+						  ;;
+					 esac                             
+                done
+
+shift $((OPTIND - 1))
