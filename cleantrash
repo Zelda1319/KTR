@@ -1,0 +1,46 @@
+#!/system/bin/sh
+# KTSR by pedro (pedrozzz0 @ GitHub)
+# If you wanna use it as part of your project, please maintain the credits to it respective's author(s).
+
+rm -rf \
+/data/*.log \
+/data/vendor/wlan_logs \
+/data/*.txt \
+/cache/*.apk \
+/data/anr/* \
+/data/backup/pending/*.tmp \
+/data/cache/*.* \
+/data/data/*.log \
+/data/data/*.txt \
+/data/log/*.log \
+/data/log/*.txt \
+/data/local/*.apk \
+/data/local/*.log \
+/data/local/*.txt \
+/data/mlog/* \
+/data/system/*.log \
+/data/system/*.txt \
+/data/system/dropbox/* \
+/data/system/usagestats/* \
+/data/system/shared_prefs/* \
+/data/tombstones/* \
+/sdcard/LOST.DIR \
+/sdcard/found000 \
+/sdcard/LazyList \
+/sdcard/albumthumbs \
+/sdcard/kunlun \
+/sdcard/.CacheOfEUI \
+/sdcard/.bstats \
+/sdcard/.taobao \
+/sdcard/Backucup \
+/sdcard/MIUI/debug_log \
+/sdcard/ramdump \
+/sdcard/UnityAdsVideoCache \
+/sdcard/*.log \
+/sdcard/*.CHK \
+/sdcard/duilite \
+/sdcard/DkMiBrowserDemo \
+/sdcard/.xlDownload \
+
+# always return success, even if any command fail
+exit 0
